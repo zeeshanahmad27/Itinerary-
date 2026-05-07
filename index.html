@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -100,13 +99,6 @@
             
             <div class="relative w-full aspect-square sm:aspect-video bg-black/50 sm:rounded-xl overflow-hidden flex items-center justify-center">
                 <img id="gallery-main-img" src="" class="max-w-full max-h-full object-contain" alt="Gallery Image">
-                
-                <button onclick="prevImage()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/80 transition"><i data-lucide="chevron-left"></i></button>
-                <button onclick="nextImage()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/80 transition"><i data-lucide="chevron-right"></i></button>
-            </div>
-            
-            <div class="flex gap-2 mt-4 overflow-x-auto max-w-full px-4 hide-scrollbar" id="gallery-thumbnails">
-                <!-- Thumbnails injected here -->
             </div>
         </div>
     </div>
@@ -114,7 +106,10 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
-        // --- Data Structure ---
+        // Default fallback image in case Wikipedia has no image
+        const FALLBACK_IMG = "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80";
+
+        // --- Data Structure with Real Wikipedia Queries ---
         const tripData = [
             {
                 day: 1, title: "Bloomsbury, West End & South Flavours", date: "Friday",
@@ -123,48 +118,42 @@
                         id: "d1-1", name: "The British Museum", time: "10:00 AM", hours: "10:00 AM - 5:00 PM",
                         desc: "Start your day with incredible world history just a short walk from your hostel.",
                         lat: 51.5194, lng: -0.1270, requiresBooking: true, bookingUrl: "https://www.britishmuseum.org/visit",
-                        images: [
-                            "https://images.unsplash.com/photo-1543362141-9c882193b2a5?auto=format&fit=crop&w=800&q=80",
-                            "https://images.unsplash.com/photo-1594921319762-d961e938f381?auto=format&fit=crop&w=800&q=80"
-                        ],
+                        wikiQuery: "British_Museum", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "15 mins", cost: "Free", route: "Walk down Southampton Row" }
                     },
                     {
                         id: "d1-2", name: "Post-Building Roof Garden", time: "12:30 PM", hours: "10:00 AM - 8:00 PM",
                         desc: "A brilliant hidden gem! A free public roof garden on the 9th floor. Bring physical Photo ID to enter.",
                         lat: 51.5165, lng: -0.1245, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1528644499236-1e66c04f9815?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Holborn", images: [FALLBACK_IMG], // Holborn area image
                         transit: { mode: "Walk", icon: "footprints", time: "5 mins", cost: "Free", route: "Walk west towards St Giles" }
                     },
                     {
                         id: "d1-3", name: "Outernet London", time: "1:30 PM", hours: "10:00 AM - 11:30 PM",
                         desc: "Walk into these massive, immersive digital screen rooms right by Tottenham Court Road.",
                         lat: 51.5150, lng: -0.1300, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1510511244346-621811a7a109?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Tottenham_Court_Road", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "10 mins", cost: "Free", route: "Walk along Oxford Street" }
                     },
                     {
                         id: "d1-4", name: "Oxford St & Marylebone", time: "2:00 PM", hours: "Shops generally 10am - 8pm",
                         desc: "Window shop Oxford Street, then turn right to Marylebone High Street for a slightly quieter, village feel. Great lunch spot!",
                         lat: 51.5149, lng: -0.1446, requiresBooking: false,
-                        images: [
-                            "https://images.unsplash.com/photo-1588636411993-e40df5f05354?auto=format&fit=crop&w=800&q=80",
-                            "https://images.unsplash.com/photo-1533104816155-25e2e8e916ea?auto=format&fit=crop&w=800&q=80"
-                        ],
+                        wikiQuery: "Oxford_Street", images: [FALLBACK_IMG],
                         transit: { mode: "Tube (Central Line)", icon: "train-track", time: "15 mins", cost: "£2.80", route: "Marble Arch -> Notting Hill Gate" }
                     },
                     {
                         id: "d1-5", name: "Notting Hill", time: "4:00 PM", hours: "Public area",
                         desc: "Wander the colorful streets and famous Portobello Road.",
                         lat: 51.5140, lng: -0.2036, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1518398457788-b211a14a79c5?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Notting_Hill", images: [FALLBACK_IMG],
                         transit: { mode: "Tube (Central & Northern)", icon: "train-track", time: "45 mins", cost: "£2.80", route: "Notting Hill Gate -> Bank -> Tooting Broadway" }
                     },
                     {
                         id: "d1-6", name: "Tooting Market", time: "6:30 PM", hours: "Open until 10:30 PM",
                         desc: "Incredible, buzzing atmosphere. Grab the best South Asian and international street food in London for dinner.",
                         lat: 51.4285, lng: -0.1661, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Tooting", images: [FALLBACK_IMG],
                         transit: null
                     }
                 ]
@@ -176,45 +165,42 @@
                         id: "d2-1", name: "Museum Row (NHM / V&A)", time: "9:30 AM", hours: "10:00 AM - 5:45 PM",
                         desc: "Pick 1 or 2 museums to explore inside. The architecture alone is stunning.",
                         lat: 51.4967, lng: -0.1764, requiresBooking: true, bookingUrl: "https://www.nhm.ac.uk/visit.html",
-                        images: [
-                            "https://images.unsplash.com/photo-1574950454359-2479e0a0d9bf?auto=format&fit=crop&w=800&q=80",
-                            "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?auto=format&fit=crop&w=800&q=80"
-                        ],
+                        wikiQuery: "Natural_History_Museum,_London", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "15 mins", cost: "Free", route: "Walk north to the park" }
                     },
                     {
                         id: "d2-2", name: "Hyde Park", time: "1:00 PM", hours: "5:00 AM - 12:00 AM",
                         desc: "A refreshing stroll through London's famous royal park.",
                         lat: 51.5073, lng: -0.1657, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1512411516080-6ea525281bb9?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Hyde_Park,_London", images: [FALLBACK_IMG],
                         transit: { mode: "Walk/Bus", icon: "bus", time: "25 mins", cost: "£1.75", route: "Bus 9 or walk through Green Park" }
                     },
                     {
                         id: "d2-3", name: "The National Gallery", time: "2:30 PM", hours: "10:00 AM - 6:00 PM",
                         desc: "Enjoy some of the world's greatest European art in Trafalgar Square.",
                         lat: 51.5089, lng: -0.1283, requiresBooking: true, bookingUrl: "https://www.nationalgallery.org.uk/visiting",
-                        images: ["https://images.unsplash.com/photo-1572950541743-4ba025f1c9c8?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "National_Gallery,_London", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "15 mins", cost: "Free", route: "Walk via Charing Cross Rd" }
                     },
                     {
                         id: "d2-4", name: "The Hunterian Museum", time: "4:00 PM", hours: "10:00 AM - 5:00 PM",
                         desc: "Fascinating (and slightly macabre) museum of anatomy and surgery.",
                         lat: 51.5147, lng: -0.1180, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Hunterian_Museum_(London)", images: [FALLBACK_IMG],
                         transit: { mode: "Elizabeth Line", icon: "train-track", time: "25 mins", cost: "£2.80", route: "Tottenham Court Rd -> Canary Wharf" }
                     },
                     {
                         id: "d2-5", name: "Canary Wharf", time: "5:30 PM", hours: "Public area",
                         desc: "Walk amongst towering financial skyscrapers and grab dinner by the water.",
                         lat: 51.5054, lng: -0.0235, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1560945803-f32f323a65c2?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Canary_Wharf", images: [FALLBACK_IMG],
                         transit: { mode: "DLR", icon: "train-track", time: "15 mins", cost: "£1.70", route: "Canary Wharf -> Royal Victoria" }
                     },
                     {
                         id: "d2-6", name: "IFS Cloud Cable Car", time: "7:30 PM", hours: "Closes at 9:00 PM",
                         desc: "Epic sunset ride gliding over the River Thames.",
                         lat: 51.5077, lng: 0.0175, requiresBooking: true, bookingUrl: "https://tfl.gov.uk/modes/ifs-cloud-cable-car/",
-                        images: ["https://images.unsplash.com/photo-1533519808381-01f215096ab6?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "IFS_Cloud_Cable_Car", images: [FALLBACK_IMG],
                         transit: null
                     }
                 ]
@@ -226,73 +212,64 @@
                         id: "d3-1", name: "Buckingham Palace", time: "10:00 AM", hours: "Changing Guard: 10:45 AM",
                         desc: "Walk down the Mall to see the palace.",
                         lat: 51.5014, lng: -0.1419, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1549487222-28c946258f33?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Buckingham_Palace", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "15 mins", cost: "Free", route: "Walk through St James's Park" }
                     },
                     {
                         id: "d3-2", name: "Big Ben & Westminster", time: "11:30 AM", hours: "Public view",
                         desc: "Iconic photo spots around Parliament Square.",
                         lat: 51.5007, lng: -0.1246, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1529655683826-aba9b3e77383?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Big_Ben", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "10 mins", cost: "Free", route: "Cross Westminster Bridge" }
                     },
                     {
                         id: "d3-3", name: "The London Eye", time: "12:15 PM", hours: "11:00 AM - 6:00 PM",
                         desc: "Stand right under the massive wheel or take a ride.",
                         lat: 51.5033, lng: -0.1195, requiresBooking: true, bookingUrl: "https://www.londoneye.com/",
-                        images: ["https://images.unsplash.com/photo-1486299267070-83823f5448dd?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "London_Eye", images: [FALLBACK_IMG],
                         transit: { mode: "Walk/Tube", icon: "footprints", time: "25 mins", cost: "Free", route: "Walk Southbank or Jubilee Line to London Bridge" }
                     },
                     {
                         id: "d3-4", name: "Borough Market", time: "1:30 PM", hours: "Sundays: 10:00 AM - 4:00 PM",
                         desc: "The perfect place to grab an incredible Sunday lunch from various food stalls.",
                         lat: 51.5055, lng: -0.0905, requiresBooking: false,
-                        images: [
-                            "https://images.unsplash.com/photo-1582236814981-d13fcff4fc5b?auto=format&fit=crop&w=800&q=80",
-                            "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80"
-                        ],
+                        wikiQuery: "Borough_Market", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "15 mins", cost: "Free", route: "Walk west along the river" }
                     },
                     {
                         id: "d3-5", name: "Tate Modern", time: "3:00 PM", hours: "10:00 AM - 6:00 PM",
                         desc: "Explore contemporary art housed in a massive old power station.",
                         lat: 51.5076, lng: -0.0994, requiresBooking: true, bookingUrl: "https://www.tate.org.uk/visit/tate-modern",
-                        images: ["https://images.unsplash.com/photo-1626292305596-f3b38fcce955?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "Tate_Modern", images: [FALLBACK_IMG],
                         transit: { mode: "Walk", icon: "footprints", time: "5 mins", cost: "Free", route: "Cross the Millennium Bridge" }
                     },
                     {
                         id: "d3-6", name: "St. Paul's Cathedral", time: "4:30 PM", hours: "Sundays: Worship Only",
                         desc: "Tourist access inside is restricted on Sundays, but the outside view from the bridge is the best part!",
                         lat: 51.5138, lng: -0.0984, requiresBooking: false,
-                        images: ["https://images.unsplash.com/photo-1579541671172-426c11b11b15?auto=format&fit=crop&w=800&q=80"],
+                        wikiQuery: "St_Paul's_Cathedral", images: [FALLBACK_IMG],
                         transit: { mode: "Walk/Bus", icon: "bus", time: "25 mins", cost: "Free/£1.75", route: "Walk east along Queen Victoria St" }
                     },
                     {
                         id: "d3-7", name: "Tower Bridge", time: "5:30 PM", hours: "Public view / Exhibit 9:30 AM - 6:00 PM",
                         desc: "End your trip at the spectacular Tower Bridge.",
                         lat: 51.5055, lng: -0.0754, requiresBooking: true, bookingUrl: "https://www.towerbridge.org.uk/",
-                        images: [
-                            "https://images.unsplash.com/photo-1508004526072-3be43a5005f6?auto=format&fit=crop&w=800&q=80",
-                            "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80"
-                        ],
+                        wikiQuery: "Tower_Bridge", images: [FALLBACK_IMG],
                         transit: null
                     }
                 ]
             }
         ];
 
-        // Ensure everything runs after the HTML is fully loaded by GitHub Pages
+        // --- Render Application ---
         document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
             const container = document.getElementById('timeline-container');
             
-            // Render Timeline Line
             const line = document.createElement('div');
             line.className = 'timeline-line';
             container.appendChild(line);
 
             tripData.forEach((dayInfo) => {
-                // Day Header
                 const dayHtml = `
                     <div class="relative z-10 mb-8 pt-8" id="day-${dayInfo.day}">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 ml-12 md:ml-20">
@@ -308,30 +285,26 @@
                 `;
                 container.insertAdjacentHTML('beforeend', dayHtml);
 
-                // Stops
                 dayInfo.stops.forEach((stop, index) => {
                     const bookingBtn = stop.requiresBooking 
                         ? `<a href="${stop.bookingUrl}" target="_blank" class="mt-4 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-semibold transition"><i data-lucide="ticket" class="w-4 h-4"></i> Book Tickets</a>` 
                         : '';
 
-                    // Using lookup indices (dayInfo.day, index) prevents inline HTML JSON parsing errors
                     const stopHtml = `
                         <div class="relative z-10 mb-2 flex items-start group">
-                            <!-- Timeline Node -->
                             <div class="absolute left-6 md:left-10 w-4 h-4 bg-white border-[3px] border-brand rounded-full mt-6 -translate-x-1/2 z-20 group-hover:scale-125 group-hover:bg-brand transition-all"></div>
                             
-                            <!-- Content Card -->
                             <div class="ml-12 md:ml-20 w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-5 hover:shadow-md transition">
                                 <div class="flex flex-col sm:flex-row gap-5">
-                                    <!-- Image Thumbnail -->
-                                    <div class="w-full sm:w-1/3 aspect-[4/3] sm:aspect-square relative rounded-xl overflow-hidden cursor-pointer group/img" onclick="openGallery(${dayInfo.day}, ${index})">
-                                        <img src="${stop.images[0]}" class="w-full h-full object-cover group-hover/img:scale-110 transition duration-500" alt="${stop.name}">
+                                    <!-- Image Thumbnail with Loading State -->
+                                    <div class="w-full sm:w-1/3 aspect-[4/3] sm:aspect-square relative rounded-xl overflow-hidden cursor-pointer group/img" onclick="openGallery('${stop.id}')">
+                                        <div id="loader-${stop.id}" class="absolute inset-0 bg-slate-200 animate-pulse z-10"></div>
+                                        <img id="img-${stop.id}" src="${stop.images[0]}" class="w-full h-full object-cover group-hover/img:scale-110 transition duration-500 z-0 opacity-0" alt="${stop.name}" onload="this.classList.remove('opacity-0'); document.getElementById('loader-${stop.id}')?.remove();">
                                         <div class="absolute inset-0 bg-black/20 group-hover/img:bg-black/0 transition flex items-center justify-center">
-                                            ${stop.images.length > 1 ? '<div class="bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm"><i data-lucide="images" class="w-3 h-3 inline mr-1"></i>+' + (stop.images.length-1) + '</div>' : '<i data-lucide="expand" class="w-6 h-6 text-white opacity-0 group-hover/img:opacity-100 drop-shadow-md"></i>'}
+                                            <i data-lucide="expand" class="w-6 h-6 text-white opacity-0 group-hover/img:opacity-100 drop-shadow-md"></i>
                                         </div>
                                     </div>
                                     
-                                    <!-- Info -->
                                     <div class="w-full sm:w-2/3 flex flex-col justify-center">
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="text-brand font-bold text-sm bg-blue-50 px-2 py-0.5 rounded">${stop.time}</span>
@@ -347,7 +320,6 @@
                     `;
                     container.insertAdjacentHTML('beforeend', stopHtml);
 
-                    // Transit connection (if not last stop)
                     if (stop.transit) {
                         const transitHtml = `
                             <div class="relative z-10 mb-2 ml-12 md:ml-20 py-3 flex items-center gap-4 text-slate-500 text-sm">
@@ -369,9 +341,36 @@
                 });
             });
 
-            // Re-init icons for the newly injected dynamic content
             lucide.createIcons();
+            
+            // --- Fetch Real Images from Wikipedia API ---
+            fetchRealImages();
         });
+
+        // This function guarantees 100% real images by asking Wikipedia for them directly
+        function fetchRealImages() {
+            tripData.forEach(day => {
+                day.stops.forEach(stop => {
+                    if(stop.wikiQuery) {
+                        fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${stop.wikiQuery}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if(data.thumbnail && data.thumbnail.source) {
+                                    // Make the image high quality (800px instead of default thumbnail)
+                                    const realImageUrl = data.thumbnail.source.replace(/\/\d+px-/, '/800px-');
+                                    
+                                    // Update the image source on the page
+                                    document.getElementById(`img-${stop.id}`).src = realImageUrl;
+                                    
+                                    // Update the internal array so the Gallery Modal uses the real image
+                                    stop.images = [realImageUrl];
+                                }
+                            })
+                            .catch(e => console.log("Used fallback for", stop.name));
+                    }
+                });
+            });
+        }
 
         // --- Map Logic ---
         let mapInstance = null;
@@ -382,7 +381,6 @@
             document.getElementById('map-modal-title').innerText = `Day ${dayNum} Route: ${dayData.title}`;
             document.getElementById('map-modal').classList.remove('hidden');
             
-            // Allow modal transition to finish before doing heavy map operations
             setTimeout(() => {
                 if (!mapInstance) {
                     mapInstance = L.map('map').setView([51.505, -0.12], 12);
@@ -391,22 +389,17 @@
                     }).addTo(mapInstance);
                 }
                 
-                // Force leaflet to recalculate size after the modal is fully visible
                 mapInstance.invalidateSize();
-
                 if (mapRouteLayer) { mapInstance.removeLayer(mapRouteLayer); }
                 mapRouteLayer = L.layerGroup().addTo(mapInstance);
 
                 const latlngs = [];
-                
-                // Add Generator Hostel Base as starting point
                 const baseLatlng = [51.5262, -0.1256];
                 latlngs.push(baseLatlng);
                 L.marker(baseLatlng, {
                     icon: L.divIcon({ className: 'bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold border-2 border-white shadow-md', html: '🏠', iconSize: [32, 32], iconAnchor: [16,16] })
                 }).bindPopup('<b>Start: Generator Hostel</b>').addTo(mapRouteLayer);
 
-                // Add Stops
                 dayData.stops.forEach((stop, idx) => {
                     latlngs.push([stop.lat, stop.lng]);
                     const icon = L.divIcon({
@@ -418,72 +411,29 @@
                     L.marker([stop.lat, stop.lng], {icon}).bindPopup(`<b>${stop.time}</b><br>${stop.name}`).addTo(mapRouteLayer);
                 });
 
-                // Draw connecting line
                 L.polyline(latlngs, {
                     color: '#2563eb', weight: 4, opacity: 0.8, className: 'route-line'
                 }).addTo(mapRouteLayer);
 
-                // Fit bounds
                 mapInstance.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
-
-            }, 300); // 300ms matches the CSS animation duration perfectly
+            }, 300);
         }
 
-        function closeMap() {
-            document.getElementById('map-modal').classList.add('hidden');
-        }
+        function closeMap() { document.getElementById('map-modal').classList.add('hidden'); }
 
         // --- Gallery Logic ---
-        let currentGalleryImages = [];
-        let currentGalleryIndex = 0;
-
-        // Instead of receiving an array, it receives indices to look up the array safely
-        function openGallery(dayId, stopIndex) {
-            const dayInfo = tripData.find(d => d.day === dayId);
-            currentGalleryImages = dayInfo.stops[stopIndex].images;
-            currentGalleryIndex = 0;
-            updateGalleryUI();
-            document.getElementById('gallery-modal').classList.remove('hidden');
-        }
-
-        function closeGallery() {
-            document.getElementById('gallery-modal').classList.add('hidden');
-        }
-
-        function nextImage() {
-            currentGalleryIndex = (currentGalleryIndex + 1) % currentGalleryImages.length;
-            updateGalleryUI();
-        }
-
-        function prevImage() {
-            currentGalleryIndex = (currentGalleryIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length;
-            updateGalleryUI();
-        }
-
-        function setGalleryImage(index) {
-            currentGalleryIndex = index;
-            updateGalleryUI();
-        }
-
-        function updateGalleryUI() {
-            // Main Image
-            document.getElementById('gallery-main-img').src = currentGalleryImages[currentGalleryIndex];
+        function openGallery(stopId) {
+            // Find the correct stop data to get the currently loaded image
+            let currentStop = null;
+            tripData.forEach(day => day.stops.forEach(stop => { if(stop.id === stopId) currentStop = stop; }));
             
-            // Thumbnails
-            const thumbContainer = document.getElementById('gallery-thumbnails');
-            thumbContainer.innerHTML = '';
-            
-            if(currentGalleryImages.length > 1) {
-                currentGalleryImages.forEach((img, idx) => {
-                    const opacity = idx === currentGalleryIndex ? 'opacity-100 border-2 border-brand' : 'opacity-50 border-2 border-transparent hover:opacity-100';
-                    const thumb = `<img src="${img}" onclick="setGalleryImage(${idx})" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded cursor-pointer transition ${opacity}">`;
-                    thumbContainer.insertAdjacentHTML('beforeend', thumb);
-                });
+            if(currentStop && currentStop.images) {
+                document.getElementById('gallery-main-img').src = currentStop.images[0];
+                document.getElementById('gallery-modal').classList.remove('hidden');
             }
         }
+
+        function closeGallery() { document.getElementById('gallery-modal').classList.add('hidden'); }
     </script>
 </body>
 </html>
-
-
-```
